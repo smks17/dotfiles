@@ -1,0 +1,50 @@
+# Sane Defaults
+alias cp='cp -iv'
+alias mv='mv -iv'
+alias mkdir='mkdir -pv'
+alias grep='grep --color=always'
+alias cd..='cd ../'
+alias ..='cd ../'
+alias ...='cd ../../'
+alias .3='cd ../../../'
+alias .4='cd ../../../../'
+alias .5='cd ../../../../../'
+alias .6='cd ../../../../../../'
+alias ~="cd ~"
+alias kill='kill -9'
+alias rm='rm -i'
+alias rmd='rm -rf'
+alias ax='chmod a+x'                      # system: make file executable
+alias path='echo -e ${PATH//:/\\n}'       # system: Echo all executable Paths
+alias shfmt="shfmt -ci -bn -i 2"          # dev: Preferred shellformat implementation
+alias sc='shellcheck --exclude=2001,2148' # dev: Preferred shellcheck implementation
+
+if [[ $OSTYPE == darwin* ]]; then
+  alias cpwd='pwd | tr -d "\n" | pbcopy'                        # Copy the working path to clipboard
+  alias cl="fc -e -|pbcopy"                                     # Copy output of last command to clipboard
+  alias caff="caffeinate -ism"                                  # Run command without letting mac sleep
+  alias cleanDS="find . -type f -name '*.DS_Store' -ls -delete" # Delete .DS_Store files on Macs
+  alias showHidden='defaults write com.apple.finder AppleShowAllFiles TRUE'
+  alias hideHidden='defaults write com.apple.finder AppleShowAllFiles FALSE'
+  alias capc="screencapture -c"
+  alias capic="screencapture -i -c"
+  alias capiwc="screencapture -i -w -c"
+fi
+
+if (( $+commands[eza] )); then
+  alias ls='eza --icons --group-directories-first'
+  alias ll='eza -lah --icons --group-directories-first'
+  alias la='eza -a --icons'
+fi
+# alias cat='bat'
+
+# Better navigation
+alias c='clear'
+alias ..='cd ..'
+alias ...='cd ../..'
+
+# Git
+(( $+commands[lazygit] )) && alias lg='lazygit'
+
+# System
+(( $+commands[btop] )) && alias top='btop'

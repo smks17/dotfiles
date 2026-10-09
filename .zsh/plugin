@@ -1,0 +1,116 @@
+# Load Plugins
+# https://github.com/mattmc3/zsh_unplugged - Build your own zsh plugin manager
+
+
+# _pluginload_: Function which loads a specified plugin into my zsh environment
+_pluginload_() {
+    local giturl="$1"
+    local plugin_name=${${1##*/}%.git}
+    local plugindir="${ZPLUGINDIR:-$HOME/.zsh/plugins}/${plugin_name}"
+
+    # Clone repository for the plugin if isn't there already
+    if [[ ! -d ${plugindir} ]]; then
+        command git clone --depth 1 --recursive --shallow-submodules ${giturl} ${plugindir}
+        [[ $? -eq 0 ]] || { >&2 echo "plugin-load: git clone failed; $1" && return 1 }
+    fi
+
+    # Symlink an init.zsh if there isn't one so the plugin is easy to source
+    if [[ ! -f ${plugindir}/init.zsh ]]; then
+        local initfiles=(
+          # look for specific files first
+          ${plugindir}/${plugin_name}.plugin.zsh(N)
+          ${plugindir}/${plugin_name}.zsh(N)
+          ${plugindir}/${plugin_name}(N)
+          ${plugindir}/${plugin_name}.zsh-theme(N)
+          # then do more aggressive globbing
+          ${plugindir}/*.plugin.zsh(N)
+          ${plugindir}/*.zsh(N)
+          ${plugindir}/*.zsh-theme(N)
+          ${plugindir}/*.sh(N)
+        )
+        [[ ${#initfiles[@]} -gt 0 ]] || { >&2 echo "plugin-load: no plugin init file found" && return 1 }
+        command ln -s ${initfiles[1]} ${plugindir}/init.zsh
+    fi
+
+    # source the plugin to make it active in the current environment
+    source ${plugindir}/init.zsh
+
+    # Modify the path to include the plugin directory
+    fpath+=${plugindir}
+    [[ -d ${plugindir}/functions ]] && fpath+=${plugindir}/functions
+}
+
+# Set where we should store Zsh plugins
+ZPLUGINDIR=${HOME}/.zsh/plugins
+
+# Add your plugins to this array. Anything added here will be installed.
+plugins=(
+    # core plugins
+    # ######################
+    zsh-users/zsh-autosuggestions
+    zsh-users/zsh-completions
+
+    # # user plugins
+    # ######################
+    peterhurford/up.zsh                 # Cd to parent directories (ie. up 3)
+    marlonrichert/zsh-hist              # Run hist -h for help
+    reegnz/jq-zsh-plugin                # Write interactive jq queries (Requires jq and fzf)
+    MichaelAquilina/zsh-you-should-use  # Recommends aliases when typed
+    rupa/z                              # Tracks your most used directories, based on 'frequency'
+
+    # Additional completions
+    # ######################
+    sudosubin/zsh-github-cli
+    zpm-zsh/ssh
+
+    # Prompts
+    # ######################
+    # denysdovhan/spaceship-prompt
+    romkatv/powerlevel10k
+
+    # load these last
+    # ######################
+    # zsh-users/zsh-syntax-highlighting
+    zdharma-continuum/fast-syntax-highlighting
+    zsh-users/zsh-history-substring-search
+)
+
+# Add plugins to this array that should only be installed on a computer running MacOS.
+# mac_plugins=(
+#       ellie/atuin  # Replace history search with a sqlite database
+# )
+
+# Load your plugins (clone, source, and add to fpath)
+for repo in ${plugins[@]}; do
+  _pluginload_ https://github.com/${repo}.git
+done
+unset repo
+
+# Load Mac specific plugins (clone, source, and add to fpath)
+if [[ ${OSTYPE} == "darwin"* ]]; then
+  for mac_repo in ${mac_plugins[@]}; do
+    _pluginload_ https://github.com/${mac_repo}.git
+  done
+  unset mac_repo
+fi
+
+# Run this function from time-to-time to update the plugins installed on a computer
+function zshup () {
+  local plugindir="${ZPLUGINDIR:-$HOME/.zsh/plugins}"
+  for d in $plugindir/*/.git(/); do
+    echo "Updating ${d:h:t}..."
+    command git -C "${d:h}" pull --ff --recurse-submodules --depth 1 --rebase --autostash
+  done
+}
+
+# Load Completions
+#############################################
+autoload -Uz compinit
+compinit -i
+
+# CONFIGURE PLUGINS
+#############################################
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=242' # Use a lighter gray for the suggested text
+ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE="20"
+FAST_HIGHLIGHT[use_brackets]=1
+
