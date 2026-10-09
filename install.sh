@@ -38,6 +38,12 @@ install_tools() {
 link "$REPO/.emacs" ~/.emacs
 link "$REPO/vim" ~/.config/nvim
 link "$REPO/.zshrc" ~/.zshrc
+# an existing real ~/.gitconfig (your name/email) becomes the untracked local include
+if [ -f ~/.gitconfig ] && [ ! -L ~/.gitconfig ] && [ ! -e ~/.gitconfig.local ]; then
+  mv ~/.gitconfig ~/.gitconfig.local
+fi
+link "$REPO/.gitconfig" ~/.gitconfig
+link "$REPO/.gitignore_global" ~/.gitignore_global
 for f in zshrc plugin alias function; do
   link "$REPO/.zsh/$f" "$HOME/.zsh/$f"
 done
