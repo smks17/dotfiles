@@ -56,7 +56,9 @@
 ;; Whitespace mode
 (require 'whitespace)
 (global-whitespace-mode t)
-(setq whitespace-line-column 120)
+(setq whitespace-line-column 120
+      whitespace-style '(face trailing tabs spaces lines newline missing-newline-at-eof
+                         empty indentation space-after-tab space-before-tab space-mark tab-mark))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -101,37 +103,31 @@
 ;------------- Package -------------
 ;; init package manager
 (require 'package)
-(add-to-list 'package-archives
-    '("melpa" . "http://melpa.org/packages/") t)
-(setq package-enable-at-startup nil)
-  (setq package-archives '(("gnu" . "http://mirrors.163.com/elpa/gnu/")
-                           ("melpa" . "https://melpa.org/packages/")
-                           ("org" . "http://orgmode.org/elpa/")))
+(setq package-archives '(("gnu"   . "https://elpa.gnu.org/packages/")
+                         ("melpa" . "https://melpa.org/packages/")))
+(package-initialize)
 (unless (package-installed-p 'use-package)
   (package-refresh-contents)
   (package-install 'use-package))
-(eval-when-compile
-  (require 'use-package))
+(require 'use-package)
+(setq use-package-always-ensure t)
 
 ;; packages installation
-(use-package ansi-color)
 (use-package yasnippet-snippets)
 
 (use-package magit
-  :ensure t
   :bind* (("C-c C-g" . magit-status)
           ("M-m g b" . magit-blame)))
 
 (use-package company
-  :ensure t
   :diminish company-mode
   :init (add-hook 'after-init-hook 'global-company-mode)
   :custom
-  (company-global-modes '(not shell-mode eaf-mode)))
-(add-to-list 'company-backends 'company-c-headers)
+  (company-global-modes '(not shell-mode eaf-mode))
+  :config
+  (add-to-list 'company-backends 'company-c-headers))
 
 (use-package rainbow-delimiters
-  :ensure t
   :hook (prog-mode . rainbow-delimiters-mode))
 
 (use-package dired
@@ -144,7 +140,6 @@
   )
 
 (use-package async
-  :ensure t
   :commands (async-start)
   :config (async-bytecomp-package-mode 1))
 (autoload 'dired-async-mode "dired-async.el" nil t)
@@ -154,13 +149,11 @@
   (add-hook 'dired-mode-hook 'auto-revert-mode)))
 
 (use-package yasnippet
-  :ensure t
   :config
     (add-to-list 'yas-snippet-dirs "~/.emacs.d/snippets")
     (yas-global-mode 1))
 
 (use-package multiple-cursors
-  :ensure t
   :bind (("C-M-SPC" . set-rectangular-region-anchor)
          ("C->" . mc/mark-next-like-this)
          ("C-<" . mc/mark-previous-like-this)
@@ -173,7 +166,6 @@
 
 ; Python
 (use-package python-mode
-  :ensure t
   :after flycheck
   :mode "\\.py\\'"
   :custom
@@ -197,26 +189,17 @@
                         '(("\\<\\(thread_local\\)\\>" . font-lock-warning-face)
                           ("\\<\\(constexpr\\)\\>" . font-lock-keyword-face)
                           ))
-;; TODO: run the executable too
-(defun compile-cpp-simple ()
-  "Compiles the file"
-  (interactive)
-  (compile
-   (concat "g++ -Wall -g -std=c++11 " (buffer-file-name) " -o " (file-name-sans-extension buffer-file-name) ".out")))
-(defun compile-cpp-thread ()
-  "Compiles the file"
-  (interactive)
-  (compile
-   (concat "g++ -Wall -g -std=c++11 -lpthread " (buffer-file-name) " -o " (file-name-sans-extension buffer-file-name) ".out")))
-(defun compile-cpp-17 ()
-  "Compiles the file"
-  (interactive)
-  (compile
-   (concat "g++ -Wall -g -std=c++17 " (buffer-file-name) " -o " (file-name-sans-extension buffer-file-name) ".out")))
+;; Compile the current file with g++ into <file>.out
+(defun compile-cpp (std &optional flags)
+  (compile (format "g++ -Wall -g -std=%s %s%s -o %s.out"
+                   std (or flags "") (buffer-file-name)
+                   (file-name-sans-extension (buffer-file-name)))))
+(defun compile-cpp-simple () (interactive) (compile-cpp "c++11"))
+(defun compile-cpp-thread () (interactive) (compile-cpp "c++11" "-lpthread "))
+(defun compile-cpp-17 () (interactive) (compile-cpp "c++17"))
 
 ;; Haskell
-(use-package haskell-mode
-  :ensure t)
+(use-package haskell-mode)
 
 ;; (use-package cmake-mode
 ;;  :ensure t)
@@ -315,11 +298,11 @@ region-end is used."
   "Duplicate the current line NUM times."
   (interactive "p")
   (save-excursion
-    (when (eq (point-at-eol) (point-max))
+    (when (eq (line-end-position) (point-max))
       (goto-char (point-max))
       (newline)
       (forward-char -1))
-    (duplicate-region num (point-at-bol) (1+ (point-at-eol)))))
+    (duplicate-region num (line-beginning-position) (1+ (line-end-position)))))
 
 (defun duplicate-line-or-region (&optional num)
   "Duplicate the current line or region if active"
@@ -416,42 +399,6 @@ region-end is used."
   (revert-buffer))
 (define-key dired-mode-map (kbd "c") 'dired-duplicate-this-file)
 
-;; https://emacs.stackexchange.com/a/18254
-(defun package-autoremove ()
-"Remove packages that are no more needed.
-        Packages that are no more needed by other packages in
-        `package-selected-packages' and their dependencies
-        will be deleted."
-(interactive)
-;; If `package-selected-packages' is nil, it would make no sense to
-;; try to populate it here, because then `package-autoremove' will
-;; do absolutely nothing.
-(when (or package-selected-packages
-            (yes-or-no-p
-            (format-message
-            "`package-selected-packages' is empty! Really remove ALL packages? ")))
-    (let ((removable (package--removable-packages)))
-    (if removable
-        (when (y-or-n-p
-                (format "%s packages will be deleted:\n%s, proceed? "
-                        (length removable)
-                        (mapconcat #'symbol-name removable ", ")))
-            (mapc (lambda (p)
-                    (package-delete (cadr (assq p package-alist)) t))
-                removable))
-        (message "Nothing to autoremove")))))
-(defun package-removable-packages ()
-  "Return a list of names of packages no longer needed.
-These are packages which are neither contained in
-`package-selected-packages' nor a dependency of one that is."
-  (let ((needed (cl-loop for p in package-selected-packages
-                         if (assq p package-alist)
-                         ;; `p' and its dependencies are needed.
-                         append (cons p (package--get-deps p)))))
-    (cl-loop for p in (mapcar #'car package-alist)
-             unless (memq p needed)
-             collect p)))
-
 ;; TODO: delete
 (defun save-buffer-without-tabs ()
   (interactive)
@@ -474,7 +421,7 @@ These are packages which are neither contained in
 ;; https://stackoverflow.com/a/22480022
 (defun copy-line ()
   (interactive)
-  (kill-ring-save (point-at-bol) (point-at-eol))
+  (kill-ring-save (line-beginning-position) (line-end-position))
   (message "line copied"))
 
 
@@ -510,9 +457,7 @@ These are packages which are neither contained in
   (message "Opened:  %s" (buffer-name))))
 
 
-(custom-set-variables
- '(package-selected-packages
-   '(almost-mono-themes glsl-mode yaml-mode emacsql-sqlite-builtin cmake-mode ein django-theme haskell-mode lsp-mode lsp-python-ms company python-mode rainbow-delimiters ansi-color yasnippet-snippets use-package pyenv-mode pamparam multiple-cursors magit gruber-darker-theme async))
- '(warning-suppress-log-types '((use-package)))
- '(whitespace-style
-   '(face trailing tabs spaces lines newline missing-newline-at-eof empty indentation space-after-tab space-before-tab space-mark tab-mark)))
+;; Keep Customize output out of this file.
+(setq custom-file (expand-file-name "~/.emacs-custom.el"))
+(load custom-file 'noerror)
+(setq warning-suppress-log-types '((use-package)))
