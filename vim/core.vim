@@ -1,4 +1,4 @@
-let vimplug_exists=expand('~/.vim/autoload/plug.vim')
+let vimplug_exists=stdpath('data') . '/site/autoload/plug.vim'
 if has('win32')&&!has('win64')
   let curl_exists=expand('C:\Windows\Sysnative\curl.exe')
 else
