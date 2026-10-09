@@ -2,7 +2,7 @@
 alias cp='cp -iv'
 alias mv='mv -iv'
 alias mkdir='mkdir -pv'
-alias grep='grep --color=always'
+alias grep='grep --color=auto'
 alias cd..='cd ../'
 alias ..='cd ../'
 alias ...='cd ../../'
